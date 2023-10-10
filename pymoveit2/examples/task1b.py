@@ -30,6 +30,7 @@ from pymoveit2 import MoveIt2Servo
 import numpy as np
 from pymoveit2 import MoveIt2
 from sensor_msgs.msg import JointState
+from std_srvs.srv import Trigger
 
 # variable tags for twist_stamped msgs to be used for servoing control
 __twist_msg = TwistStamped()
@@ -50,9 +51,13 @@ def main():
     global timer_2
     global timer_3
     global timer_4
+    global servo_client
     
     rclpy.init()
     node_2 = Node("servo_goal")
+
+    # global request
+    # request = Trigger().Request()
     
     # tf_ros.buffer is used for looking up transform between base_link and tool0 (located at the end-effector)
     tf_buffer = tf2_ros.buffer.Buffer()
@@ -70,7 +75,9 @@ def main():
     is_task2_completed = False
     is_task3_completed = False
     is_task4_completed = False
-    tolerance = 0.008 # controlling the error level in the manipluator end effector positions
+    tolerance = 0.001 # controlling the error level in the manipluator end effector positions
+    ssf = 1/8.0 # speed scaling factor
+
 
     callback_group = ReentrantCallbackGroup()
 
@@ -89,7 +96,11 @@ def main():
         callback_group=callback_group,
     )
 
-
+    def call_servo():
+        request = Trigger.Request()
+        node_2.get_logger().info("Servo_node service started\n")
+        future = servo_client.call_async(request)
+        rclpy.spin_until_future_complete(node_2, future)
     
     def home_pose(home):
         '''
@@ -154,9 +165,7 @@ def main():
         global timer_1
         current_time = (node_2.get_clock().now().nanoseconds)*1e-9
         nonlocal is_task1_completed
-
-        # joint_msg = JointState()
-
+        # if(servo_client.service_is_ready()):
         try:
             tr = tf_buffer.lookup_transform('base_link', 'tool0', rclpy.time.Time())
         except tf2_ros.TransformException as e:
@@ -167,11 +176,6 @@ def main():
         x_pose = tr.transform.translation.x
         y_pose = tr.transform.translation.y
         z_pose = tr.transform.translation.z
-        #     # angles
-        # x_orient = tr.transform.rotation.x
-        # y_orient = tr.transform.rotation.y
-        # z_orient = tr.transform.rotation.z
-        # w_orient = tr.transform.rotation.w
 
         # coordinate errors
         err_x = np.abs(0.35 - x_pose)
@@ -184,17 +188,23 @@ def main():
         # err_radius = np.sqrt((x_pose - 0.35)**2 + (y_pose - 0.1)**2 + (z_pose - 0.68)**2)
         print("x: %f, y: %f, z: %f\n" %(x_pose, y_pose, z_pose))
         print("current_dis: %f, desired_dis: %f\n" %(current_distance, desired_distance))
+        print("error_distance: %f\n" %(np.abs(current_distance-desired_distance)))
         # print("distance between vectors: %f\n" %(err_radius))
 
         # task one --> moving to pick-up point-1
         if(is_task1_completed == False):
-            if(err_x > tolerance):
-                moveit2_servo(linear=(0.35, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
-            elif(err_y > tolerance):
-                moveit2_servo(linear=(0.0, 0.1, 0.0), angular=(0.0, 0.0, 0.0))
-            elif(err_z > tolerance):
-                moveit2_servo(linear=(0.0, 0.0, 0.68), angular=(0.0, 0.0, 0.0))
-            elif(err_x <= tolerance and err_y <= tolerance and err_z <= tolerance):
+            # if(err_x > tolerance):
+            #     moveit2_servo(linear=(0.35*ssf, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
+            # elif(err_y > tolerance):
+            #     moveit2_servo(linear=(0.0, 0.1*ssf, 0.0), angular=(0.0, 0.0, 0.0))
+            # elif(err_z > tolerance):
+            #     moveit2_servo(linear=(0.0, 0.0, 0.68*ssf), angular=(0.0, 0.0, 0.0))
+            # elif(err_x <= tolerance and err_y <= tolerance and err_z <= tolerance):
+            #     moveit2_servo(linear=(0.0, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
+            #     is_task1_completed = True
+            if(np.abs(current_distance-desired_distance) > tolerance):
+                moveit2_servo(linear=(0.35*ssf, 0.1*ssf, 0.68*ssf), angular=(0.0, 0.0, 0.0))
+            elif(np.abs(current_distance-desired_distance) <= tolerance):
                 moveit2_servo(linear=(0.0, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
                 is_task1_completed = True
         # if task-1 completed then go to home joint config and then go to drop off joint config
@@ -228,11 +238,6 @@ def main():
             x_pose = tr.transform.translation.x
             y_pose = tr.transform.translation.y
             z_pose = tr.transform.translation.z
-            #     # angles
-            # x_orient = tr.transform.rotation.x
-            # y_orient = tr.transform.rotation.y
-            # z_orient = tr.transform.rotation.z
-            # w_orient = tr.transform.rotation.w
             # drop --> [-0.37, 0.12, 0.397] 
 
             # coordinate errors
@@ -245,16 +250,22 @@ def main():
 
             print("x: %f, y: %f, z: %f\n" %(x_pose, y_pose, z_pose))
             print("current_dis: %f, desired_dis: %f\n" %(current_distance, desired_distance))
+            print("error_distance: %f\n" %(np.abs(current_distance-desired_distance)))
             
             # task two --> going to drop-off point
             if(is_task2_completed == False):
-                if(err_x > tolerance):
-                    moveit2_servo(linear=(0.37, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
-                elif(err_y > tolerance):
-                    moveit2_servo(linear=(0.0, 0.12, 0.0), angular=(0.0, 0.0, 0.0))
-                elif(err_z > tolerance):
-                    moveit2_servo(linear=(0.0, 0.0, -0.397), angular=(0.0, 0.0, 0.0))
-                elif(err_x <= tolerance, err_y <= tolerance and err_z <= tolerance):
+                # if(err_x > tolerance):
+                #     moveit2_servo(linear=(0.37, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
+                # elif(err_y > tolerance):
+                #     moveit2_servo(linear=(0.0, 0.12, 0.0), angular=(0.0, 0.0, 0.0))
+                # elif(err_z > tolerance):
+                #     moveit2_servo(linear=(0.0, 0.0, -0.397), angular=(0.0, 0.0, 0.0))
+                # elif(err_x <= tolerance, err_y <= tolerance and err_z <= tolerance):
+                #     moveit2_servo(linear=(0.0, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
+                #     is_task2_completed = True
+                if(np.abs(current_distance-desired_distance) > tolerance):
+                    moveit2_servo(linear=(0.37*ssf, 0.12*ssf, -0.397*ssf), angular=(0.0, 0.0, 0.0))
+                elif(np.abs(current_distance-desired_distance) <= tolerance):
                     moveit2_servo(linear=(0.0, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
                     is_task2_completed = True
             # if task-2 is completed then go to the alternative home pose to go to pick-up point-2
@@ -303,15 +314,21 @@ def main():
 
             print("x: %f, y: %f, z: %f\n" %(x_pose, y_pose, z_pose))
             print("current_dis: %f, desired_dis: %f\n" %(current_distance, desired_distance))
+            print("error_distance: %f\n" %(np.abs(current_distance-desired_distance)))
             # task_3 --> moving to pick-up point-2
             if(is_task3_completed == False):
-                if(err_x > tolerance):
-                    moveit2_servo(linear=(0.194, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
-                elif(err_y > tolerance):
-                    moveit2_servo(linear=(0.0, -0.43, 0.0), angular=(0.0, 0.0, 0.0))
-                elif(err_z > tolerance):
-                    moveit2_servo(linear=(0.0, 0.0, 0.701), angular=(0.0, 0.0, 0.0))
-                elif(err_x <= tolerance and err_y <= tolerance and err_z <= tolerance):
+                # if(err_x > tolerance):
+                #     moveit2_servo(linear=(0.194, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
+                # elif(err_y > tolerance):
+                #     moveit2_servo(linear=(0.0, -0.43, 0.0), angular=(0.0, 0.0, 0.0))
+                # elif(err_z > tolerance):
+                #     moveit2_servo(linear=(0.0, 0.0, 0.701), angular=(0.0, 0.0, 0.0))
+                # elif(err_x <= tolerance and err_y <= tolerance and err_z <= tolerance):
+                #     moveit2_servo(linear=(0.0, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
+                #     is_task3_completed = True
+                if(np.abs(current_distance-desired_distance) > tolerance):
+                    moveit2_servo(linear=(0.194*ssf, -0.43*ssf, 0.701*ssf), angular=(0.0, 0.0, 0.0))
+                elif(np.abs(current_distance-desired_distance) <= tolerance):
                     moveit2_servo(linear=(0.0, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
                     is_task3_completed = True
             # if task-3 is completed then go to the alternative home pose and go to drop off joint config 
@@ -361,15 +378,21 @@ def main():
 
             print("x: %f, y: %f, z: %f\n" %(x_pose, y_pose, z_pose))
             print("current_dis: %f, desired_dis: %f\n" %(current_distance, desired_distance))
+            print("error_distance: %f\n" %(np.abs(current_distance-desired_distance)))
             # task-4 --> go to the drop-off point
             if(is_task4_completed == False):
-                if(err_x > tolerance):
-                    moveit2_servo(linear=(0.37, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
-                elif(err_y > tolerance):
-                    moveit2_servo(linear=(0.0, 0.12, 0.0), angular=(0.0, 0.0, 0.0))
-                elif(err_z > tolerance):
-                    moveit2_servo(linear=(0.0, 0.0, -0.397), angular=(0.0, 0.0, 0.0))
-                elif(err_x <= tolerance, err_y <= tolerance and err_z <= tolerance):
+                # if(err_x > tolerance):
+                #     moveit2_servo(linear=(0.37, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
+                # elif(err_y > tolerance):
+                #     moveit2_servo(linear=(0.0, 0.12, 0.0), angular=(0.0, 0.0, 0.0))
+                # elif(err_z > tolerance):
+                #     moveit2_servo(linear=(0.0, 0.0, -0.397), angular=(0.0, 0.0, 0.0))
+                # elif(err_x <= tolerance, err_y <= tolerance and err_z <= tolerance):
+                #     moveit2_servo(linear=(0.0, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
+                #     is_task4_completed = True
+                if(np.abs(current_distance-desired_distance) > tolerance):
+                    moveit2_servo(linear=(0.37*ssf, 0.12*ssf, -0.397*ssf), angular=(0.0, 0.0, 0.0))
+                elif(np.abs(current_distance-desired_distance) <= tolerance):
                     moveit2_servo(linear=(0.0, 0.0, 0.0), angular=(0.0, 0.0, 0.0))
                     is_task4_completed = True
             # if task-4 is completed go to the default home position
@@ -378,7 +401,12 @@ def main():
                 # stop timer thereafter
                 timer_4.cancel()
         
-    # timer functions created to do tasks in a sequential manner and to avoid intermediate errors that came up when I ran movit2_joint pose immediately after servoing or vice versa
+    # timer functions created to do tasks in a sequential manner and to avoid intermediate errors that came up when I ran movit2_joint pose immediately after servoing or vice versa 
+    servo_client = node_2.create_client(Trigger, "/servo_node/start_servo")
+    while not servo_client.wait_for_service(timeout_sec=10.0):
+        node_2.get_logger().info('service not available, waiting again...')
+    call_servo()
+
     timer_1 = node_2.create_timer(0.02, servo_move_1)
     timer_2 = node_2.create_timer(0.02, servo_move_2)
     timer_3 = node_2.create_timer(0.02, servo_move_3)
