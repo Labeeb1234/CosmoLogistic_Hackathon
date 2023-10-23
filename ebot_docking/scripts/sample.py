@@ -55,7 +55,7 @@ class MyRobotDockingController(Node):
         # Rack pose/vicinity properties
         self.rack_angle = 0.0
         self.rack_id = None
-        self.rack_vicinity_position = [0.5, 4.35]
+        self.pre_dock_position = [0.5, 4.35]
     
         # required tolreance values for the goal pose
         self.angle_tolerance = 0.01
@@ -124,8 +124,8 @@ class MyRobotDockingController(Node):
             # P controller logic
             # desired docking pose
             desired_yaw = self.rack_angle
-            desired_x_goal = self.rack_vicinity_position[0]
-            desired_y_goal = self.rack_vicinity_position[1]
+            desired_x_goal = self.pre_dock_position[0]
+            desired_y_goal = self.pre_dock_position[1]
             # print("rack angle in radians: %f" %(desired_yaw))
 
             # current pose of the robot
@@ -139,7 +139,7 @@ class MyRobotDockingController(Node):
             kp_linear = 0.1
 
             # global error values
-            err_x_global = desired_x_goal-current_robot_x_pose
+            err_x_global = desired_x_goal-current_robot_x_pose 
             err_y_global = desired_y_goal-current_robot_y_pose
             err_yaw_global = desired_yaw-current_robot_yaw
             print("err_x: %f, err_y: %f, err_yaw: %f\n" %(err_x_global, err_y_global, err_yaw_global))
@@ -153,7 +153,7 @@ class MyRobotDockingController(Node):
             twist_msg.linear.y = 0.0
             twist_msg.angular.z = kp_yaw*err_yaw_local
             # apply brakes after reaching the desired docking pose
-            if(err_x_global < self.linear_tolerance and err_y_global < self.linear_tolerance and err_yaw_global < self.angle_tolerance):
+            if(err_yaw_global < self.angle_tolerance):
                 twist_msg.linear.x = 0.0
                 twist_msg.linear.y = 0.0
                 twist_msg.angular.z = 0.0
@@ -179,6 +179,7 @@ class MyRobotDockingController(Node):
             self.controller_timer.reset()
         elif(self.is_docking == False):
             self.controller_timer.is_canceled()
+            self.dock_control_srv.destroy()
 
         # Log a message indicating that docking has started
         self.get_logger().info("Docking started!")
