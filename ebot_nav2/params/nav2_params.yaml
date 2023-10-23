@@ -126,7 +126,7 @@ controller_server:
     controller_frequency: 2.0
     min_x_velocity_threshold: 0.001 
     min_y_velocity_threshold: 0.5
-    min_theta_velocity_threshold: 0.001
+    min_theta_velocity_threshold: 0.001 
     failure_tolerance: 0.3
     odom_topic : "/odometry/filtered"
     progress_checker_plugin: "progress_checker"
@@ -146,15 +146,7 @@ controller_server:
       xy_goal_tolerance: 0.22
       yaw_goal_tolerance: 0.15
     # DWB parameters
-    FollowPath:
-      # plugin: "nav2_rotation_shim_controller::RotationShimController"
-      # primary_controller: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      # angular_dist_threshold: 0.785
-      # forward_sampling_distance: 0.5
-      # rotate_to_heading_angular_vel: 1.0
-      # max_angular_accel: 3.2
-      # simulate_ahead_time: 1.0
-      
+    FollowPath:      
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
       min_vel_x: 0.0
@@ -181,7 +173,7 @@ controller_server:
       linear_granularity: 0.05
       angular_granularity: 0.025
       transform_tolerance: 0.2
-      xy_goal_tolerance: 0.25
+      xy_goal_tolerance: 0.22
       trans_stopped_velocity: 0.25
       short_circuit_trajectory_evaluation: True
       stateful: True
@@ -224,7 +216,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.55
+        inflation_radius: 0.65
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -287,7 +279,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.55
+        inflation_radius: 0.65
       always_send_full_costmap: True
   global_costmap_client:
     ros__parameters:
@@ -319,6 +311,7 @@ planner_server:
       tolerance: 0.5
       use_astar: false
       allow_unknown: true
+
 
 planner_server_rclcpp_node:
   ros__parameters:
@@ -372,3 +365,12 @@ velocity_smoother:
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0
+
+
+  # lifecycle_manager:
+  #   ros__parameters:
+  #     autostart: true
+  #     node_names: ['controller_server', 'planner_server', 'behavior_server', 'bt_navigator', 'waypoint_follower']
+  #     bond_timeout: 4.0
+  #     attempt_respawn_reconnection: true
+  #     bond_respawn_max_duration: 10.0

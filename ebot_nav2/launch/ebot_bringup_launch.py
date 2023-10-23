@@ -198,7 +198,7 @@ def generate_launch_description():
     ld = LaunchDescription()
     ld.add_action(stdout_linebuf_envvar)
     ld.add_action(declare_namespace_cmd)
-    ld.add_action(declare_use_namespace_cmd)
+    ld.add_action(declare_use_namespace_cmd) 
     ld.add_action(declare_slam_cmd)
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_use_sim_time_cmd)

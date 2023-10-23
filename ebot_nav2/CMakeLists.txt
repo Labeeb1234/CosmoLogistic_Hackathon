@@ -57,7 +57,8 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
-  scripts/ebot_nav_cmd.py
+  scripts/nav2_cmd_task1c.py
+  scripts/ebot_nav2_cmd.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
