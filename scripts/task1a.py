@@ -171,7 +171,7 @@ def detect_aruco(image):
     id = id.flatten()
 
 
-    if id is not None and len(id) > 0 and len(id) == 3:
+    if id is not None and len(id) > 0:
        
         # to draw over all the detected aruco markers
         cv2.aruco.drawDetectedMarkers(bw_img, corners, id) 
@@ -205,12 +205,12 @@ def detect_aruco(image):
         for i in range(0, len(id)):
             center_aruco_list.append(np.mean(corner_coordinates[i], axis=0))        
         # handle missing cases of centre_coordinates(may have to delete)
-        for i in range(0, len(id)):
-            if(len(center_aruco_list)==3):
-                center_aruco_list[i] = center_aruco_list[i]
-            elif(len(center_aruco_list) < 3):
-                # calculated running avg/modal overrride
-                center_aruco_list = [np.array([216.25, 405.75]), np.array([746.25, 376.5 ]), np.array([479., 375.5])]
+        # for i in range(0, len(id)):
+        #     if(len(center_aruco_list)==3):
+        #         center_aruco_list[i] = center_aruco_list[i]
+        #     elif(len(center_aruco_list) < 3):
+        #         # calculated running avg/modal overrride
+        #         center_aruco_list = [np.array([216.25, 405.75]), np.array([746.25, 376.5 ]), np.array([479., 375.5])]
 
 
         for i in range(0, len(id)): 
@@ -376,104 +376,107 @@ class aruco_tf(Node):
         center_aruco_list, distance_from_rgb_list, angle_aruco_list, width_aruco_list, id = detect_aruco('new.jpg')
         image = cv2.imread('transformed_image.jpg', 1)
 
-        if(len(id) == 3):
+        # if(len(id) == 3):
             # angle correction (yaw)
-            for i in range(0, len(angle_aruco_list)):
-                angle_aruco_list[i][2] = (0.788*angle_aruco_list[i][2]) - ((angle_aruco_list[i][2]**2)/3160)
+        for i in range(0, len(angle_aruco_list)):
+            angle_aruco_list[i][2] = (0.788*angle_aruco_list[i][2]) - ((angle_aruco_list[i][2]**2)/3160)
 
-            try:
-                # loggin down the depth image values in [m] for each marker that is detected withing range
-                for (markerid, centres) in zip(id, center_aruco_list):
-                    cX = centres[0]
-                    cY = centres[1]
-                    depth_mm = self.depth_image[int(cY), int(cX)]
-                    self.get_logger().info(f"Real sense depth of {markerid}: {depth_mm/1000}")
+        try:
+            # logging down the depth image values in [m] for each marker that is detected withing range
+            for (markerid, centres) in zip(id, center_aruco_list):
+                cX = centres[0]
+                cY = centres[1]
+                depth_mm = self.depth_image[int(cY), int(cX)]
+                self.get_logger().info(f"Real sense depth of {markerid}: {depth_mm/1000}")
 
-                # getting marker frames in Rviz and broadcasting them to the tf-tree of the system
-                for (markerid, coordinates, angles) in zip(id, center_aruco_list, angle_aruco_list):
-                    
-                    cX = coordinates[0]
-                    cY = coordinates[1]
-                    # centre point marker on image put text too
-                    cv2.circle(image, (int(cX),int(cY)), 1, (255, 153, 255), 10)
-                    cv2.putText(image, "center", (int(cX)-30, int(cY)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255,255,255), 2)
-
-                    depth_image = self.depth_image[int(cY), int(cX)]
-                    real_sense_depth = depth_image/1000
-                    distance_from_rgb = real_sense_depth
-                    
-                    x = distance_from_rgb* (sizeCamX - cX - centerCamX) / focalX
-                    y = distance_from_rgb* (sizeCamY - cY - centerCamY) / focalY
-                    z = distance_from_rgb
-                    # self.get_logger().info(f"x: {x}, y: {y}, z: {z}")
+            # getting marker frames in Rviz and broadcasting them to the tf-tree of the system
+            for (markerid, coordinates, angles) in zip(id, center_aruco_list, angle_aruco_list):
                 
-                    # angle correction for tilt for final TF
-                    if(markerid == 49):
-                        # rotations on the side racks
-                        roll = np.pi/2
-                        pitch = cam_frame_tilt
-                        angles[2] = angles[2] - np.pi/2
-                    elif(markerid == 3):
-                        # middle rack rotations
-                        roll = np.pi/2 - cam_frame_tilt
-                        pitch = 0.0
-                        angles[2] = angles[2] + np.pi/2
-                    else:
-                        roll = np.pi/2 - cam_frame_tilt
-                        pitch = 0.0
-                        angles[2] = angles[2] + np.pi/2
+                cX = coordinates[0]
+                cY = coordinates[1]
+                # centre point marker on image put text too
+                cv2.circle(image, (int(cX),int(cY)), 1, (255, 153, 255), 10)
+                cv2.putText(image, "center", (int(cX)-30, int(cY)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255,255,255), 2)
 
-                    quaternion = euler_to_quaternion(roll, pitch, angles[2])
-                    transform_stamped = TransformStamped()
-                    transform_stamped.header.frame_id = 'camera_link'
-                    transform_stamped.header.stamp = self.get_clock().now().to_msg()
-                    transform_stamped.child_frame_id = 'cam_'+ str(markerid)
-                    transform_stamped.transform.translation.x = z 
-                    transform_stamped.transform.translation.y = x
-                    transform_stamped.transform.translation.z = y 
-                    transform_stamped.transform.rotation.x = quaternion[0]
-                    transform_stamped.transform.rotation.y = quaternion[1]
-                    transform_stamped.transform.rotation.z = quaternion[2]
-                    transform_stamped.transform.rotation.w = quaternion[3]
-                    self.br.sendTransform(transform_stamped)
+                depth_image = self.depth_image[int(cY), int(cX)]
+                real_sense_depth = depth_image/1000
+                distance_from_rgb = real_sense_depth
+                
+                x = distance_from_rgb* (sizeCamX - cX - centerCamX) / focalX
+                y = distance_from_rgb* (sizeCamY - cY - centerCamY) / focalY
+                z = distance_from_rgb
+                # self.get_logger().info(f"x: {x}, y: {y}, z: {z}")
+            
+                # angle correction for tilt for final TF
+                if(markerid == 49):
+                    # rotations on the side racks
+                    # roll = np.pi/2
+                    # pitch = cam_frame_tilt
+                    # angles[2] = angles[2] - np.pi/2
+                    roll = np.pi/2 - cam_frame_tilt
+                    pitch = 0.0
+                    angles[2] = angles[2] + np.pi/2
+                elif(markerid == 3):
+                    # middle rack rotations
+                    roll = np.pi/2 - cam_frame_tilt
+                    pitch = 0.0
+                    angles[2] = angles[2] + np.pi/2
+                else:
+                    roll = np.pi/2
+                    pitch = -cam_frame_tilt
+                    angles[2] = angles[2] - np.pi/2
 
-                    # making a look up between objects and base_link for further transformation between base_link and objects
-                    from_frame_rel = 'cam_'+str(markerid)                                                                      
-                    to_frame_rel = 'base_link'                                                                  
+                quaternion = euler_to_quaternion(roll, pitch, angles[2])
+                transform_stamped = TransformStamped()
+                transform_stamped.header.frame_id = 'camera_link'
+                transform_stamped.header.stamp = self.get_clock().now().to_msg()
+                transform_stamped.child_frame_id = 'cam_'+ str(markerid)
+                transform_stamped.transform.translation.x = z 
+                transform_stamped.transform.translation.y = x
+                transform_stamped.transform.translation.z = y 
+                transform_stamped.transform.rotation.x = quaternion[0]
+                transform_stamped.transform.rotation.y = quaternion[1]
+                transform_stamped.transform.rotation.z = quaternion[2]
+                transform_stamped.transform.rotation.w = quaternion[3]
+                self.br.sendTransform(transform_stamped)
 
-                    try:
-                        transformed_tr = self.tf_buffer.lookup_transform(to_frame_rel, from_frame_rel, rclpy.time.Time())  
-                        # self.get_logger().info(f'Successfully received data!')
-                    except tf2_ros.TransformException as e:
-                        self.get_logger().info(f'Could not transform {to_frame_rel} to {from_frame_rel}: {e}')
-                        return
+                # making a look up between objects and base_link for further transformation between base_link and objects
+                from_frame_rel = 'cam_'+str(markerid)                                                                      
+                to_frame_rel = 'base_link'                                                                  
 
-                    x = transformed_tr.transform.translation.x 
-                    y = transformed_tr.transform.translation.y
-                    z = transformed_tr.transform.translation.z 
-                    Z = transformed_tr.transform.rotation.z
-                    X = transformed_tr.transform.rotation.x 
-                    Y = transformed_tr.transform.rotation.y 
-                    W = transformed_tr.transform.rotation.w 
+                try:
+                    transformed_tr = self.tf_buffer.lookup_transform(to_frame_rel, from_frame_rel, rclpy.time.Time())  
+                    # self.get_logger().info(f'Successfully received data!')
+                except tf2_ros.TransformException as e:
+                    self.get_logger().info(f'Could not transform {to_frame_rel} to {from_frame_rel}: {e}')
+                    return
 
-                    ts = TransformStamped()
-                    ts.header.frame_id = 'base_link'
-                    ts.header.stamp = self.get_clock().now().to_msg()
-                    ts.child_frame_id = 'obj_' + str(markerid)
-                    ts.transform.translation.x = x
-                    ts.transform.translation.y = y
-                    ts.transform.translation.z = z
-                    ts.transform.rotation.z = Z 
-                    ts.transform.rotation.x = X 
-                    ts.transform.rotation.y = Y 
-                    ts.transform.rotation.w = W 
-                    self.br.sendTransform(ts)
+                x = transformed_tr.transform.translation.x 
+                y = transformed_tr.transform.translation.y
+                z = transformed_tr.transform.translation.z 
+                Z = transformed_tr.transform.rotation.z
+                X = transformed_tr.transform.rotation.x 
+                Y = transformed_tr.transform.rotation.y 
+                W = transformed_tr.transform.rotation.w 
 
-                # image displayed
-                cv2.imshow('task-1a', image)
-                cv2.waitKey(1)
-            except TypeError:
-                pass
+                ts = TransformStamped()
+                ts.header.frame_id = 'base_link'
+                ts.header.stamp = self.get_clock().now().to_msg()
+                ts.child_frame_id = 'obj_' + str(markerid)
+                ts.transform.translation.x = x
+                ts.transform.translation.y = y
+                ts.transform.translation.z = z
+                ts.transform.rotation.z = Z 
+                ts.transform.rotation.x = X 
+                ts.transform.rotation.y = Y 
+                ts.transform.rotation.w = W 
+                self.br.sendTransform(ts)
+
+            # image displayed
+            cv2.imshow('task-1a', image)
+            cv2.waitKey(1)
+        except TypeError:
+            pass
         else:
             pass
         
