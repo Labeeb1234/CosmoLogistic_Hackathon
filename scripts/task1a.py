@@ -168,8 +168,10 @@ def detect_aruco(image):
     
     corners, id, rejected_img_points = cv2.aruco.detectMarkers(bw_img, arucoDict, parameters=parameters, cameraMatrix=cam_mat, distCoeff=dist_mat)
 
-    id = id.flatten()
-
+    try:
+        id = id.flatten()
+    except AttributeError:
+        pass
 
     if id is not None and len(id) > 0:
        
