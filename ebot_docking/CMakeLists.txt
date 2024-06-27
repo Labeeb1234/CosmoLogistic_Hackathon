@@ -54,8 +54,8 @@ install(
 )
 
 install(PROGRAMS
-	scripts/ebot_docking_boilerplate.py
-  scripts/sample.py
+	scripts/ebot_docking_controller.py
+  scripts/samples.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
