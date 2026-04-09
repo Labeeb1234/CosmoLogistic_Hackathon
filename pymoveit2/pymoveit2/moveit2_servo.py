@@ -27,7 +27,7 @@ class MoveIt2Servo:
         linear_speed: float = 1.0,
         angular_speed: float = 1.0,
         enable_at_init: bool = True,
-        callback_group: Optional[CallbackGroup] = None, 
+        callback_group: Optional[CallbackGroup] = None,
     ):
         """
         Construct an instance of `MoveIt2Servo` interface.
@@ -45,7 +45,7 @@ class MoveIt2Servo:
         # Create publisher
         self.__twist_pub = self._node.create_publisher(
             msg_type=TwistStamped,
-            topic="/servo_node/delta_twist_cmds",
+            topic="delta_twist_cmds",
             qos_profile=QoSProfile(
                 durability=QoSDurabilityPolicy.VOLATILE,
                 reliability=QoSReliabilityPolicy.RELIABLE,

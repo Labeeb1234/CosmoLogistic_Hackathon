@@ -37,8 +37,8 @@ def main():
         "action",
         "add",
     )
-    node.declare_parameter("position", [0.2, 0.2, 0.2])
-    node.declare_parameter("quat_xyzw", [0.0, 0.0, 0.0, 0.0])
+    node.declare_parameter("position", [0.5, 0.0, 0.5])
+    node.declare_parameter("quat_xyzw", [0.0, 0.0, -0.707, 0.707])
 
     # Create callback group that allows execution of callbacks in parallel without restrictions
     callback_group = ReentrantCallbackGroup()

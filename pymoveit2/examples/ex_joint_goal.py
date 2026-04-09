@@ -4,7 +4,7 @@ Example of moving to a joint configuration.
 `ros2 run pymoveit2 ex_joint_goal.py --ros-args -p joint_positions:="[1.57, -1.57, 0.0, -1.57, 0.0, 1.57]"`
 """
 
-from threading import Thread 
+from threading import Thread
 
 import rclpy
 from rclpy.callback_groups import ReentrantCallbackGroup
@@ -12,7 +12,6 @@ from rclpy.node import Node
 
 from pymoveit2 import MoveIt2
 from pymoveit2.robots import ur5
-import numpy as np
 
 
 def main():
@@ -21,19 +20,16 @@ def main():
     # Create node for this example
     node = Node("ex_joint_goal")
 
-
-
     # Declare parameter for joint positions
     node.declare_parameter(
         "joint_positions",
         [
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
-            0.0
-
+            -0.03403341798766224,
+            -1.2848632387872256,
+            -1.8567441129914095,
+            -3.185621281551551,
+            -1.545888364367352,
+            3.1498768354918307
         ],
     )
 
@@ -56,7 +52,7 @@ def main():
     executor_thread = Thread(target=executor.spin, daemon=True, args=())
     executor_thread.start()
 
-    # Get parameter 
+    # Get parameter
     joint_positions = (
         node.get_parameter("joint_positions").get_parameter_value().double_array_value
     )
